@@ -3,7 +3,7 @@ import { FaMagnifyingGlass } from "react-icons/fa6";
 import { IoMdClose } from "react-icons/io";
 function SearchBar({ value, onChange, handleSearch, onClearSearch }) {
   return (
-    <div className="w-60 sm:w-60 md:80 flex items-center px-4 bg-slate-300 rounded-md">
+    <div className="w-60 sm:w-30 md:80 flex items-center px-4 bg-slate-300 rounded-md">
       <input
         type="text"
         placeholder="Search Notes....."
