@@ -1,77 +1,157 @@
-import React, { useState } from "react"; // Import useState
+import React, { useEffect, useState } from "react"; // Import useState
 import NoteCard from "../../components/Cards/NoteCard";
 import { MdAdd } from "react-icons/md";
 import Modal from "react-modal";
 import AddEditNotes from "./AddEditNotes";
-
+import { useSelector } from "react-redux";
 Modal.setAppElement("#root"); // Important for accessibility
-
+import { useNavigate } from "react-router-dom";
+import Navbar from "../../components/Navbar";
+import axios from "axios";
+import { toast } from "react-toastify";
+import EmptyCard from "../../components/EmptyCard/EmptyCard";
 function Home() {
+  const [allNotes, setAllNotes] = useState([]);
+  console.log(allNotes);
+
+  const { currentUser, loading, errorDispatch } = useSelector(
+    (state) => state.user
+  );
+  const [userInfo, setUserInfo] = useState(null);
+  const [isSearch,setIsSearch]=useState(false)
+  const navigate = useNavigate();
   const [openAddEditModal, setOpenAddEditModal] = useState({
     isShown: false,
     type: "add",
     data: null,
   });
+  useEffect(() => {
+    if (currentUser === null || !currentUser) {
+      navigate("/login");
+    } else {
+      setUserInfo(currentUser?.rest);
+      getAllNotes();
+    }
+  }, []);
+  //get all notes
+  const getAllNotes = async () => {
+    try {
+      const res = await axios.get("http://localhost:3000/api/note/all", {
+        withCredentials: true,
+      });
+      if (res.data.success === false) {
+        console.log(res.data);
+        return;
+      }
+      setAllNotes(res.data.notes);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  const handleEdit = (noteDetails) => {
+    setOpenAddEditModal({ isShown: true, data: noteDetails, type: "edit" });
+  };
+  //Delete Note
+  const deleteNote = async (data) => {
+    console.log(data);
 
+    const noteId = data._id;
+    try {
+      const res = await axios.delete(
+        "http://localhost:3000/api/note/delete/" + noteId,
+        { withCredentials: true }
+      );
+
+      if (res.data.messge === false) {
+        toast.error(res.data.message);
+      }
+      toast.success(res.data.message);
+      getAllNotes();
+    } catch (error) {
+      toast.error(error.messge);
+    }
+  };
+  const onSearchNote = async (query) => {
+    try {
+      const res = await axios.get("http://localhost:3000/api/note/search", {
+        params: { query },
+        withCredentials: true,
+      });
+  
+      console.log("Search Response:", res.data); // Log the entire response
+  
+      if (!res.data.success) { // Assuming success is a boolean indicating success
+        toast.error(res.data.message);
+        return;
+      }
+      setIsSearch(true)
+      setAllNotes(res.data.notes);
+    } catch (error) {
+      toast.error(error.message);
+      console.log("Search Error:", error.message); // Log the error
+    }
+  };
+  
+  
+
+  const handleClearSearch = () => {
+    setIsSearch(false)
+    getAllNotes();
+  };
+
+  const updateIsPinned=async(noteData)=>{
+  const noteId=noteData._id
+  try{
+   const res =await axios.put("http://localhost:3000/api/note/update-note-pinned/"+noteId,{isPinned:!noteData.isPinned},{withCredentials:true})
+   if(res.data.message===false){
+    toast.error(res.data.message)
+    return
+   }
+   toast.success(res.data.message)
+   getAllNotes()
+  }
+  catch(error){
+   console.log(error.message);
+   
+  }
+  }
   return (
     <>
+      <Navbar
+        userInfo={userInfo}
+        handleClearSearch={handleClearSearch}
+        onSearchNote={onSearchNote}
+      />
       <div className="container mx-auto p-2">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-8 max-md:m-5">
-          <NoteCard
-            title={"Grocery Shopping"}
-            date={"7th June, 2021"}
-            content={"Buy milk, bread, and eggs"}
-            tags={"#groceries"}
-            isPinned={false}
-            onEdit={() => {}}
-            onDelete={() => {}}
-            onPinNote={() => {}}
+        {allNotes.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-8 max-md:m-5">
+            {allNotes.map((note, index) => (
+              <NoteCard
+                key={note._id}
+                title={note.title}
+                date={note.createdAt}
+                content={note.content}
+                tags={note.tags}
+                isPinned={note.isPinned}
+                onEdit={() => {
+                  handleEdit(note);
+                }}
+                onDelete={() => {
+                  deleteNote(note);
+                }}
+                onPinNote={() => {updateIsPinned(note)}}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyCard
+            imgSrc={
+              isSearch ? "https://static.vecteezy.com/system/resources/previews/026/766/386/non_2x/search-no-result-data-document-or-file-not-found-concept-illustration-flat-design-eps10-modern-graphic-element-for-landing-page-empty-state-ui-infographic-icon-vector.jpg":
+              "https://img.freepik.com/premium-vector/colored-sticky-notes-paper-illustration-blank-paper-sheets-note-cute-notes-paper-stickers_64264-1323.jpg"
+            }
+            message={isSearch ? `OOPS No notes Found`:`Ready to capture your ideas? Click the Add Button To add Your Notes`}
           />
-
-          <NoteCard
-            title={"Team Meeting"}
-            date={"10th June, 2021"}
-            content={"Discuss project milestones and next steps"}
-            tags={"#work #meeting"}
-            isPinned={true}
-            onEdit={() => {}}
-            onDelete={() => {}}
-            onPinNote={() => {}}
-          />
-
-          <NoteCard
-            title={"Read a Book"}
-            date={"12th June, 2021"}
-            content={"Finish reading 'The Alchemist'"}
-            tags={"#reading #selfimprovement"}
-            isPinned={false}
-            onEdit={() => {}}
-            onDelete={() => {}}
-            onPinNote={() => {}}
-          />
-
-          <NoteCard
-            title={"Workout Routine"}
-            date={"15th June, 2021"}
-            content={"Complete 30 minutes of cardio and strength training"}
-            tags={"#fitness #health"}
-            isPinned={true}
-            onEdit={() => {}}
-            onDelete={() => {}}
-            onPinNote={() => {}}
-          />
-
-          <NoteCard
-            title={"Plan Weekend Getaway"}
-            date={"20th June, 2021"}
-            content={"Book hotel and plan itinerary for the weekend"}
-            tags={"#travel #relaxation"}
-            isPinned={false}
-            onEdit={() => {}}
-            onDelete={() => {}}
-            onPinNote={() => {}}
-          />
-        </div>
+        )}
       </div>
       <button
         className="w-16 h-16 flex items-center justify-center rounded-2xl bg-[#2B85FF] hover:bg-blue-600 absolute right-10 bottom-10"
@@ -98,6 +178,7 @@ function Home() {
           }
           noteData={openAddEditModal.data}
           type={openAddEditModal.type}
+          getAllNotes={getAllNotes}
         />
       </Modal>
     </>
